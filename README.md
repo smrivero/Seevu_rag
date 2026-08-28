@@ -12,7 +12,7 @@ docker compose up --build
 
 Open `http://localhost:8080`. The tab title is `RAG Intelligence Platform`. After the probe succeeds, the page shows `Backend: Connected`.
 
-The browser origin is port 8080. Axios uses `baseURL` `/api`. nginx rewrites `/api/health` to backend `/health` and `/api/documents` to backend `/documents`. Port 8000 is not published. There is no `VITE_API_URL` and no CORS middleware.
+The browser origin is port 8080. Axios uses `baseURL` `/api`. nginx rewrites `/api/` to the backend. Port 8000 is not published. There is no `VITE_API_URL` and no CORS middleware.
 
 ## Ingest a PDF
 
@@ -21,9 +21,13 @@ There is no upload UI yet. From the same origin:
 ```bash
 curl -sS -F "file=@your.pdf;type=application/pdf" http://localhost:8080/api/documents
 curl -sS http://localhost:8080/api/documents
+curl -sS http://localhost:8080/api/stats
+curl -sS -H 'Content-Type: application/json' \
+  -d '{"query":"Hello Seevu fixture","top_k":5}' \
+  http://localhost:8080/api/search
 ```
 
-`document_id` is the SHA-256 of the file bytes. The same bytes return the existing record. Chunks stay inside page boundaries. Vectors live in `data/index/` (`faiss.index`, `chunks.json`, `documents.json`) on a Compose bind mount.
+Logs during ingest are JSON lines on stdout (`ingest.start`, `pdf.extracted`, `chunking.summary`, `embeddings.start`, `embeddings.done`, `faiss.persisted`, `ingest.done`). Search logs `search.start`, `search.embedding.done`, `search.faiss.done`, and `search.result`. Watch them with `docker compose logs -f backend`. `LOG_LEVEL=DEBUG` adds a 120-character preview per chunk, not the full text.
 
 ## Run backend tests
 
@@ -62,4 +66,4 @@ A retried ingest of the same bytes must return the same `document_id`.
 
 ## Environment
 
-`.env.example` lists `OPENAI_API_KEY`, `EMBEDDING_MODEL`, `VECTOR_STORE`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `MAX_UPLOAD_BYTES`, and `INDEX_DIR`. Compose sets `INDEX_DIR=/data/index` and bind-mounts `./data/index`. Do not put the API key in the image.
+`.env.example` lists `OPENAI_API_KEY`, `EMBEDDING_MODEL`, `VECTOR_STORE`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `MAX_UPLOAD_BYTES`, `INDEX_DIR`, and `LOG_LEVEL`. Compose sets `INDEX_DIR=/data/index` and bind-mounts `./data/index`. Do not put the API key in the image.

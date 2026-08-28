@@ -57,3 +57,14 @@ class IndexedDocument:
             vector_store=str(payload["vector_store"]),
             status=str(payload["status"]),
         )
+
+
+@dataclass(frozen=True)
+class SearchHit:
+    score: float
+    chunk_id: str
+    document_id: str
+    filename: str
+    page: int
+    chunk_index: int
+    text: str

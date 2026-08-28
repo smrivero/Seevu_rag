@@ -9,7 +9,8 @@ import faiss
 import numpy as np
 
 from app.errors import IndexingError
-from app.models import Chunk, IndexedDocument
+from app.models import Chunk, IndexedDocument, SearchHit
+from app.store import IndexSnapshot, StorageSnapshot
 
 
 def _normalize(matrix: np.ndarray) -> np.ndarray:
@@ -51,7 +52,7 @@ class FAISSVectorStore:
                 self._chunk_by_id[chunk.id] = chunk
                 self._row_ids.append(chunk.id)
 
-    def search(self, vector: Sequence[float], *, limit: int) -> list[Chunk]:
+    def search(self, vector: Sequence[float], *, limit: int) -> list[SearchHit]:
         if limit <= 0:
             return []
         query = np.ascontiguousarray(_normalize(np.asarray([vector], dtype=np.float32)))
@@ -59,14 +60,25 @@ class FAISSVectorStore:
             if self._index is None or self._index.ntotal == 0:
                 return []
             k = min(limit, self._index.ntotal)
-            _scores, indices = self._index.search(query, k)
-            found: list[Chunk] = []
-            for row in indices[0]:
+            scores, indices = self._index.search(query, k)
+            found: list[SearchHit] = []
+            for score, row in zip(scores[0], indices[0], strict=True):
                 if row < 0 or row >= len(self._row_ids):
                     continue
-                chunk = self._chunk_by_id.get(self._row_ids[row])
-                if chunk is not None:
-                    found.append(chunk)
+                chunk = self._chunk_by_id.get(self._row_ids[int(row)])
+                if chunk is None:
+                    continue
+                found.append(
+                    SearchHit(
+                        score=float(score),
+                        chunk_id=chunk.id,
+                        document_id=chunk.document_id,
+                        filename=chunk.filename,
+                        page=chunk.page,
+                        chunk_index=chunk.chunk_index,
+                        text=chunk.text,
+                    )
+                )
             return found
 
     def save(self) -> None:
@@ -140,8 +152,46 @@ class FAISSVectorStore:
         with self._lock:
             self._documents[document.document_id] = document
 
+    def chunks(self) -> list[Chunk]:
+        with self._lock:
+            return [self._chunk_by_id[chunk_id] for chunk_id in self._row_ids if chunk_id in self._chunk_by_id]
+
+    def index_snapshot(self) -> IndexSnapshot:
+        with self._lock:
+            if self._index is None:
+                return IndexSnapshot(
+                    type=self.name,
+                    index_type="IndexFlatIP",
+                    vectors=0,
+                    dimension=0,
+                    metric="cosine_similarity",
+                    trained=False,
+                )
+            return IndexSnapshot(
+                type=self.name,
+                index_type=type(self._index).__name__,
+                vectors=int(self._index.ntotal),
+                dimension=int(self._index.d),
+                metric="cosine_similarity",
+                trained=bool(self._index.is_trained),
+            )
+
+    def storage_snapshot(self) -> StorageSnapshot:
+        return StorageSnapshot(
+            faiss_index_bytes=_file_size(self._dir / "faiss.index"),
+            chunks_metadata_bytes=_file_size(self._dir / "chunks.json"),
+            documents_metadata_bytes=_file_size(self._dir / "documents.json"),
+        )
+
     def _write_json(self, name: str, payload: object) -> None:
         path = self._dir / name
         tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         tmp.replace(path)
+
+
+def _file_size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0

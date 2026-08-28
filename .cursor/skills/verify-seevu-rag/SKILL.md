@@ -1,13 +1,13 @@
 ---
 name: verify-seevu-rag
-description: Drive RAG Intelligence Platform through Docker Compose and Playwright. Proves GET /api/health, PDF ingest at POST /api/documents, FAISS persistence, the page title RAG Intelligence Platform, and Backend: Connected. Use when verifying this app, after changing frontend, backend, nginx, or compose, or before claiming a feature works.
+description: Drive RAG Intelligence Platform through Docker Compose and Playwright. Proves GET /api/health, PDF ingest at POST /api/documents, GET /api/stats, POST /api/search, FAISS persistence, the page title RAG Intelligence Platform, and Backend: Connected. Use when verifying this app, after changing frontend, backend, nginx, or compose, or before claiming a feature works.
 ---
 
 # Verify RAG Intelligence Platform
 
 Read [features/README.md](features/README.md) before driving. Drive only features listed as live. Planned features are `verified-unreachable` until their file says otherwise.
 
-Do not run `npm run dev`. The verified topology is Compose. The browser origin is `http://localhost:8080`. Axios uses `/api`. nginx rewrites `/api/health` to backend `GET /health` and `/api/documents` to backend `/documents`. Port 8000 is unpublished.
+Do not run `npm run dev`. The verified topology is Compose. The browser origin is `http://localhost:8080`. Axios uses `/api`. nginx rewrites `/api/health` to backend `GET /health`, `/api/documents` to backend `/documents`, `/api/stats` to backend `/stats`, and `/api/search` to backend `/search`. Port 8000 is unpublished.
 
 Exact strings to assert, unchanged:
 
@@ -49,19 +49,21 @@ Run doctor before the first drive, after any failed drive, and before treating t
 
 ## Drive
 
-Harness is Playwright via `scripts/browser.mjs` for the home page. HTTP checks are `scripts/check-health.py` and `scripts/check-ingest.py`. Prefer role and accessible name over CSS.
+Harness is Playwright via `scripts/browser.mjs` for the home page. HTTP checks are `scripts/check-health.py`, `scripts/check-ingest.py`, `scripts/check-stats.py`, and `scripts/check-search.py`. Prefer role and accessible name over CSS.
 
 ```bash
 .cursor/skills/verify-seevu-rag/scripts/verify.sh
 ```
 
-That script is the lever. It launches or reuses, doctors, checks health, uploads the fixture PDF, checks `GET /api/documents`, restarts backend to prove FAISS persistence, drives the live home page, writes evidence, then cleans up what it started.
+That script is the lever. It launches or reuses, doctors, checks health, uploads the fixture PDF, checks `GET /api/documents`, restarts backend to prove FAISS persistence, checks `GET /api/stats`, posts `POST /api/search` against the sample PDF, drives the live home page, writes evidence, then cleans up what it started.
 
 To drive live HTTP features after doctor already passed:
 
 ```bash
 .cursor/skills/verify-seevu-rag/scripts/check-health.py
 python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py upload
+SEEVU_STATS_REQUIRE_VECTORS=1 python3 .cursor/skills/verify-seevu-rag/scripts/check-stats.py
+python3 .cursor/skills/verify-seevu-rag/scripts/check-search.py
 ```
 
 Selectors for the live page:
@@ -88,6 +90,14 @@ Required artifacts for `document-ingestion`:
 
 - `ingest.json` the raw `POST /api/documents` body
 - `ingest-persist.json` after `docker compose restart backend`
+
+Required artifacts for `runtime-stats`:
+
+- `stats.json` the raw `GET /api/stats` body after ingest and backend restart
+
+Required artifacts for `semantic-search`:
+
+- `search.json` the raw `POST /api/search` body
 
 Proof standards:
 
@@ -118,6 +128,8 @@ All paths relative to the repo root. Scripts are executable.
 | Health body | `.cursor/skills/verify-seevu-rag/scripts/check-health.py` |
 | PDF ingest | `python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py upload` |
 | Ingest after restart | `python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py listed` |
+| Runtime stats | `SEEVU_STATS_REQUIRE_VECTORS=1 python3 .cursor/skills/verify-seevu-rag/scripts/check-stats.py` |
+| Semantic search | `python3 .cursor/skills/verify-seevu-rag/scripts/check-search.py` |
 | Playwright page | `SEEVU_ORIGIN=http://localhost:8080 SEEVU_EVIDENCE=.cursor/skills/verify-seevu-rag/evidence node .cursor/skills/verify-seevu-rag/scripts/browser.mjs` |
 | Full run | `.cursor/skills/verify-seevu-rag/scripts/verify.sh` |
 | Cleanup | `.cursor/skills/verify-seevu-rag/scripts/cleanup.sh` |

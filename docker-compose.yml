@@ -5,6 +5,7 @@ services:
     env_file: .env
     environment:
       INDEX_DIR: /data/index
+      PYTHONUNBUFFERED: "1"
     volumes:
       - ./data/index:/data/index
     healthcheck:

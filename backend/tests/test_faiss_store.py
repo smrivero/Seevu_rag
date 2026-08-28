@@ -19,5 +19,6 @@ def test_search_returns_added_chunk(tmp_path) -> None:
     store.save()
     store.load()
     hits = store.search(vectors[0], limit=1)
-    assert hits[0].id == chunk.id
+    assert hits[0].chunk_id == chunk.id
     assert hits[0].page == 1
+    assert hits[0].score > 0

@@ -8,6 +8,12 @@ from app.models import Chunk, PageText
 
 
 class Chunker(Protocol):
+    chunk_size: int
+    chunk_overlap: int
+
+    def token_count(self, text: str) -> int:
+        ...
+
     def chunk(
         self,
         pages: Sequence[PageText],
@@ -24,8 +30,11 @@ class TokenChunker:
             self._encoding = tiktoken.encoding_for_model(model)
         except KeyError:
             self._encoding = tiktoken.get_encoding("cl100k_base")
-        self._chunk_size = chunk_size
-        self._chunk_overlap = chunk_overlap
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+    def token_count(self, text: str) -> int:
+        return len(self._encoding.encode(text))
 
     def chunk(
         self,
@@ -59,7 +68,7 @@ class TokenChunker:
         start = 0
         index = 0
         while start < len(tokens):
-            end = min(start + self._chunk_size, len(tokens))
+            end = min(start + self.chunk_size, len(tokens))
             text = self._encoding.decode(tokens[start:end]).strip()
             if text:
                 pieces.append(
@@ -75,5 +84,5 @@ class TokenChunker:
                 index += 1
             if end == len(tokens):
                 break
-            start = max(end - self._chunk_overlap, start + 1)
+            start = max(end - self.chunk_overlap, start + 1)
         return pieces

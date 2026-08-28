@@ -49,9 +49,13 @@ done
 "$SCRIPTS/doctor.sh"
 python3 "$SCRIPTS/check-ingest.py" listed | tee "$SEEVU_EVIDENCE/ingest-persist.json" >/dev/null
 
+SEEVU_STATS_REQUIRE_VECTORS=1 python3 "$SCRIPTS/check-stats.py" | tee "$SEEVU_EVIDENCE/stats.json" >/dev/null
+
+python3 "$SCRIPTS/check-search.py" | tee "$SEEVU_EVIDENCE/search.json" >/dev/null
+
 "$SCRIPTS/install-browser.sh"
 SEEVU_ORIGIN="$SEEVU_ORIGIN" SEEVU_EVIDENCE="$SEEVU_EVIDENCE" \
   node "$SCRIPTS/browser.mjs"
 
-echo "verify: health-status and document-ingestion passed. evidence in $SEEVU_EVIDENCE"
+echo "verify: health-status, document-ingestion, runtime-stats, and semantic-search passed. evidence in $SEEVU_EVIDENCE"
 "$SCRIPTS/cleanup.sh"

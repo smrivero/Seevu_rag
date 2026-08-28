@@ -8,6 +8,7 @@ from app.config import Settings
 from app.faiss_store import FAISSVectorStore
 from app.ingest import IngestService
 from app.main import create_app
+from app.search import SearchService
 from tests.fakes import FakeEmbeddings, assert_never_openai
 
 
@@ -44,5 +45,9 @@ def client(settings: Settings, fake_embeddings: FakeEmbeddings, monkeypatch) -> 
         embeddings=fake_embeddings,
         store=store,
         max_upload_bytes=settings.max_upload_bytes,
+    )
+    application.state.search = SearchService(
+        embeddings=fake_embeddings,
+        store=store,
     )
     return TestClient(application)

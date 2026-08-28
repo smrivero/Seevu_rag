@@ -1,4 +1,9 @@
-class IngestError(Exception):
+class AppError(Exception):
+    status_code = 500
+    public_message = "Request failed."
+
+
+class IngestError(AppError):
     status_code = 500
     public_message = "Indexing failed."
 
@@ -46,3 +51,18 @@ class EmbeddingProviderError(IngestError):
 class IndexingError(IngestError):
     status_code = 500
     public_message = "Indexing failed."
+
+
+class EmptyQueryError(AppError):
+    status_code = 400
+    public_message = "A search query is required."
+
+
+class InvalidTopKError(AppError):
+    status_code = 400
+    public_message = "top_k must be between 1 and 100."
+
+
+class SearchFailedError(AppError):
+    status_code = 500
+    public_message = "Search failed."
