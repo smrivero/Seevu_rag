@@ -1,19 +1,21 @@
 ---
 name: verify-seevu-rag
-description: Drive RAG Intelligence Platform through Docker Compose and Playwright. Proves GET /api/health, the page title RAG Intelligence Platform, and Backend: Connected. Use when verifying this app, after changing frontend, backend, nginx, or compose, or before claiming a feature works.
+description: Drive RAG Intelligence Platform through Docker Compose and Playwright. Proves GET /api/health, PDF ingest at POST /api/documents, FAISS persistence, the page title RAG Intelligence Platform, and Backend: Connected. Use when verifying this app, after changing frontend, backend, nginx, or compose, or before claiming a feature works.
 ---
 
 # Verify RAG Intelligence Platform
 
 Read [features/README.md](features/README.md) before driving. Drive only features listed as live. Planned features are `verified-unreachable` until their file says otherwise.
 
-Do not run `npm run dev`. The verified topology is Compose. The browser origin is `http://localhost:8080`. Axios uses `/api`. nginx rewrites `/api/health` to backend `GET /health`. Port 8000 is unpublished.
+Do not run `npm run dev`. The verified topology is Compose. The browser origin is `http://localhost:8080`. Axios uses `/api`. nginx rewrites `/api/health` to backend `GET /health` and `/api/documents` to backend `/documents`. Port 8000 is unpublished.
 
 Exact strings to assert, unchanged:
 
 - Health body `{"status":"ok"}`
 - `RAG Intelligence Platform`
 - `Backend: Connected`
+
+Ingest is HTTP-only. There is no upload UI. Do not invent a file input in Playwright.
 
 ## Launch
 
@@ -25,7 +27,7 @@ From the repo root (the directory that contains `docker-compose.yml`):
 
 Ready when `scripts/doctor.sh` exits 0. That means `GET http://localhost:8080/api/health` returns exactly `{"status":"ok"}` and both Compose services are `healthy`.
 
-Port 8080 is shared. Do not start a second stack on that port. If doctor already passes, launch reuses the instance and does not rebuild. If 8080 answers with a different body or a foreign process, launch exits non-zero and does not steal the port.
+Port 8080 is shared. Do not start a second stack on that port. Launch always runs `docker compose up --build -d` so ingest image changes are in the running containers. If doctor already passed, the session is `reused` and cleanup leaves the stack up. If 8080 answers with a different body or a foreign process, launch exits non-zero and does not steal the port.
 
 Do not run `npm run dev`. Do not publish backend 8000.
 
@@ -47,20 +49,19 @@ Run doctor before the first drive, after any failed drive, and before treating t
 
 ## Drive
 
-Harness is Playwright via `scripts/browser.mjs`. HTTP checks are `scripts/check-health.py`. Prefer role and accessible name over CSS.
+Harness is Playwright via `scripts/browser.mjs` for the home page. HTTP checks are `scripts/check-health.py` and `scripts/check-ingest.py`. Prefer role and accessible name over CSS.
 
 ```bash
 .cursor/skills/verify-seevu-rag/scripts/verify.sh
 ```
 
-That script is the lever. It launches or reuses, doctors, checks health, drives the live feature map entry, writes evidence, then cleans up what it started.
+That script is the lever. It launches or reuses, doctors, checks health, uploads the fixture PDF, checks `GET /api/documents`, restarts backend to prove FAISS persistence, drives the live home page, writes evidence, then cleans up what it started.
 
-To drive one live feature after doctor already passed:
+To drive live HTTP features after doctor already passed:
 
 ```bash
 .cursor/skills/verify-seevu-rag/scripts/check-health.py
-SEEVU_ORIGIN=http://localhost:8080 SEEVU_EVIDENCE=.cursor/skills/verify-seevu-rag/evidence \
-  node .cursor/skills/verify-seevu-rag/scripts/browser.mjs
+python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py upload
 ```
 
 Selectors for the live page:
@@ -83,12 +84,18 @@ Required artifacts for `health-status`:
 - `health-status.txt` the `main` inner text after Connected
 - `health-status.png` full-page screenshot that shows the heading and `Backend: Connected`
 
+Required artifacts for `document-ingestion`:
+
+- `ingest.json` the raw `POST /api/documents` body
+- `ingest-persist.json` after `docker compose restart backend`
+
 Proof standards:
 
 - Exercise the browser origin, not TestClient and not `localhost:8000`
 - Capture the HTTP check and the UI state, not only the screenshot
 - `Backend: Connected` is the side effect of the probe. The matching HTTP body must be in `health.json`
 - No mocks. The backend process behind nginx is the system under test
+- Ingest uses the real OpenAI key from `.env`. Unit tests mock OpenAI; this skill does not.
 
 ## Cleanup
 
@@ -96,7 +103,7 @@ Proof standards:
 .cursor/skills/verify-seevu-rag/scripts/cleanup.sh
 ```
 
-Kills only the Compose project this run started (stamp at `scripts/.session`). If launch reused an already-healthy stack, cleanup leaves it running. Never `pkill` nginx, node, or uvicorn by name. Evidence files stay.
+Kills only the Compose project this run started (stamp at `scripts/.session`). If launch reused an already-healthy stack, cleanup leaves it running. Never `pkill` nginx, node, or uvicorn by name. Evidence files stay. Bind-mounted `data/index` stays on disk.
 
 After a failed iteration, run cleanup, then launch again. Do not pile stacks on 8080.
 
@@ -109,6 +116,8 @@ All paths relative to the repo root. Scripts are executable.
 | Launch or reuse | `.cursor/skills/verify-seevu-rag/scripts/launch.sh` |
 | Doctor | `.cursor/skills/verify-seevu-rag/scripts/doctor.sh` |
 | Health body | `.cursor/skills/verify-seevu-rag/scripts/check-health.py` |
+| PDF ingest | `python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py upload` |
+| Ingest after restart | `python3 .cursor/skills/verify-seevu-rag/scripts/check-ingest.py listed` |
 | Playwright page | `SEEVU_ORIGIN=http://localhost:8080 SEEVU_EVIDENCE=.cursor/skills/verify-seevu-rag/evidence node .cursor/skills/verify-seevu-rag/scripts/browser.mjs` |
 | Full run | `.cursor/skills/verify-seevu-rag/scripts/verify.sh` |
 | Cleanup | `.cursor/skills/verify-seevu-rag/scripts/cleanup.sh` |

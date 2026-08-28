@@ -15,7 +15,7 @@ This directory is the maintained source for verifying user-facing behavior. Read
 - Start from the baseline unless a feature file lists extra preconditions.
 - Prefer ARIA roles and accessible names.
 - Treat quoted UI copy as literal.
-- Run HTTP proof with `scripts/check-health.py`.
+- Run HTTP proof with `scripts/check-health.py` and `scripts/check-ingest.py`.
 - Run browser proof with `scripts/browser.mjs`.
 - Planned features are `verified-unreachable` until the product ships the named route or heading.
 
@@ -42,13 +42,13 @@ When a later capability ships, fill its file with real entry points and commands
 ## Live
 
 - [Health status](./health-status.md) covers `GET /api/health`, the home heading, and `Backend: Connected`.
+- [Document ingestion](./document-ingestion.md) covers `POST /api/documents`, `GET /api/documents`, and FAISS files under `data/index/`.
 
 ## Planned
 
 These files exist so the next feature lands in the map instead of a one-off script. They are not live. Do not drive them.
 
 - [PDF upload](./pdf-upload.md)
-- [Document ingestion](./document-ingestion.md)
 - [RAG query](./rag-query.md)
 - [Citations](./citations.md)
 - [Language detection](./language-detection.md)

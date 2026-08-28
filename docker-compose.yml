@@ -2,6 +2,11 @@ services:
   backend:
     build: ./backend
     expose: ["8000"]
+    env_file: .env
+    environment:
+      INDEX_DIR: /data/index
+    volumes:
+      - ./data/index:/data/index
     healthcheck:
       test:
         [

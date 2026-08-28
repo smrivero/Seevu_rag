@@ -1,3 +1,6 @@
+.env
+.DS_Store
+
 .venv/
 __pycache__/
 *.py[cod]
@@ -7,5 +10,15 @@ __pycache__/
 node_modules/
 dist/
 
+data/index/*
+!data/index/.gitkeep
+
+# Runtime RAG data
 .env
-.DS_Store
+data/documents/**/*.pdf
+data/index/*
+!data/index/.gitkeep
+data/debug/
+
+# Pstack verification runtime evidence
+.cursor/skills/verify-seevu-rag/evidence/

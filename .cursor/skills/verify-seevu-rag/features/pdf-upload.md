@@ -1,28 +1,29 @@
 # PDF upload
 
-PDF upload will let a user choose a PDF and send it into the corpus. It is not in the product yet.
+PDF upload will let a user choose a PDF in the browser and send it into the corpus. The HTTP ingest route exists. The page control does not.
 
 ## Sub-features
 
 - `pdf-upload-open` opens the upload control from the home page. Not shipped.
-- `pdf-upload-accept` accepts a `.pdf` file. Not shipped.
-- `pdf-upload-reject` rejects a non-PDF. Not shipped.
+- `pdf-upload-accept` accepts a `.pdf` file from that control. Not shipped.
+- `pdf-upload-reject` rejects a non-PDF from that control. Not shipped.
 
 ## How to get to it (user POV)
 
-- No entry point exists. There is no upload heading, file input, or `/api/upload` route.
+- No entry point exists on the home page. There is no upload heading or file input.
+- HTTP ingest is documented in [document-ingestion.md](./document-ingestion.md), not here.
 
 ## Driving it with Playwright
 
 Preconditions:
 
-- None. Do not drive this feature.
+- None. Do not drive this feature in the browser.
 
 - **Reach.** Open `http://localhost:8080` and look for a file input or a heading that names upload. None is present.
-- **Report.** Record `verified-unreachable`. Attempted origin `http://localhost:8080`. Unmet precondition is a user-visible upload control or `POST /api/upload`.
-- **When it ships.** Add the locator and the request assertion to `scripts/browser.mjs`. Capture the chosen filename and the resulting status text. Keep a sample PDF under `data/` for the run, not in `evidence/`.
+- **Report.** Record `verified-unreachable`. Attempted origin `http://localhost:8080`. Unmet precondition is a user-visible upload control.
+- **When it ships.** Add the locator and the request assertion to `scripts/browser.mjs`. Capture the chosen filename and the resulting status text. Keep a sample PDF under `fixtures/` for the run, not in `evidence/`.
 
 ## Gotchas
 
-- Do not treat `data/` being empty as a pass or a fail. Ingestion is not live.
-- Do not invent an upload URL in `browser.mjs` before the route exists.
+- `POST /api/documents` succeeding is not a pass for this feature. That proof belongs to document ingestion.
+- Do not invent an upload URL in `browser.mjs` before the control exists.
